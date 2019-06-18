@@ -1,0 +1,40 @@
+kind: pipeline
+name: deploy
+
+steps:
+  - name: publish
+    image: docker:dind
+    volumes:
+      - name: dockersock
+        path: /var/run
+    environment:
+      REPO:
+        from_secret: repo
+      REGISTRY:
+        from_secret: registry
+      USERNAME:
+        from_secret: username
+      PASSWORD:
+        from_secret: password
+    commands:
+      - sleep 5 # give docker enough time to start
+      - docker login -u $USERNAME -p $PASSWORD $REGISTRY
+      - docker build -t build .
+      - docker tag build $REPO
+      - docker push $REPO
+
+services:
+  - name: docker
+    image: docker:dind
+    privileged: true
+    volumes:
+      - name: dockersock
+        path: /var/run
+
+volumes:
+  - name: dockersock
+    temp: {}
+
+trigger:
+  event:
+    - tag
